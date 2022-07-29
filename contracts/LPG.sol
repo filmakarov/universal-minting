@@ -1,5 +1,5 @@
 /*
-
+    LAUNCHPASS GENESIS
 */
 
 // SPDX-License-Identifier: MIT
@@ -8,14 +8,14 @@ pragma solidity ^0.8.14;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./SignedAllowance.sol";
-import "./ERC721S.sol";
+import "erc721a/contracts/extensions/ERC721AQueryable.sol";
 
 import "hardhat/console.sol";
 
 /// @title Launch Pass Genesis Project.
 /// @author of the contract filio.eth (twitter.com/filmakarov)
 
-contract LPG is ERC721S, Ownable, SignedAllowance {  
+contract LPG is ERC721AQueryable, Ownable, SignedAllowance {  
 
     using Strings for uint256;
 
@@ -34,11 +34,11 @@ contract LPG is ERC721S, Ownable, SignedAllowance {
                                 INITIALIZATION
     //////////////////////////////////////////////////////////////*/
 
-    constructor(string memory _myBase) ERC721S("Launch Pass Genesis", "LPG") {
+    constructor(string memory _myBase) ERC721A("Launch Pass Genesis", "LPG") {
             baseURI = _myBase; 
     }
 
-    function _startTokenIndex() internal pure override returns (uint256) {
+    function _startTokenId() internal pure override returns (uint256) {
         return 1;  // put the first token # here
     }
 
@@ -89,7 +89,7 @@ contract LPG is ERC721S, Ownable, SignedAllowance {
             require(mintQty >= refQty, "Wrong amount");
         }
 
-        require (totalMinted() + mintQty <= MAX_ITEMS, ">MaxSupply");
+        require (_totalMinted() + mintQty <= MAX_ITEMS, ">MaxSupply");
 
         //timing
         if (exp > 0) {
@@ -120,37 +120,8 @@ contract LPG is ERC721S, Ownable, SignedAllowance {
                        PUBLIC METADATA VIEWS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Returns the link to the metadata for the token
-    /// @param tokenId token ID
-    /// @return string with the link
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_exists(tokenId), "NOT_EXISTS");
-        return string(abi.encodePacked(baseURI, tokenId.toString(), metadataExtension));
-    }
-
-    /// @notice Iterates over all the exisitng tokens and checks if they belong to the user
-    /// This function uses very much resources.
-    /// !!! NEVER USE this function with write transactions DIRECTLY. 
-    /// Only read from it and then pass data to the write tx
-    /// @param tokenOwner user to get tokens of
-    /// @return the array of token IDs 
-    function tokensOfOwner(address tokenOwner) external view returns(uint256[] memory) {
-        uint256 tokenCount = _balanceOf[tokenOwner];
-        if (tokenCount == 0) {
-            // Return an empty array
-            return new uint256[](0);
-        } else {
-            uint256[] memory result = new uint256[](tokenCount);
-            uint256 resultIndex = 0;
-            uint256 NFTId;
-            for (NFTId = _startTokenIndex(); NFTId < nextTokenIndex; NFTId++) { 
-                if (_exists(NFTId)&&(ownerOf(NFTId) == tokenOwner)) {  
-                    result[resultIndex] = NFTId;
-                    resultIndex++;
-                } 
-            }     
-            return result;
-        }
+    function _baseURI() internal view virtual override returns (string memory) {
+        return baseURI;
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -158,19 +129,19 @@ contract LPG is ERC721S, Ownable, SignedAllowance {
     //////////////////////////////////////////////////////////////*/
 
     function unclaimedSupply() public view returns (uint256) {
-        return MAX_ITEMS - totalMinted();
+        return MAX_ITEMS - _totalMinted();
     }
 
     function lastTokenId() public view returns (uint256) {
-        require(totalMinted() > 0, "No tokens minted");
-        return nextTokenIndex - 1;
+        require(_totalMinted() > 0, "No tokens minted");
+        return _nextTokenId() - 1;
     }
 
-    function validateSignatureAndNonce(address to, uint256 nonce, uint256 mintQty, bytes memory signature) 
+    function validateSignatureAndNonce(address to, uint256 nonce, bytes memory signature) 
             public view returns (
                 uint256 price,
-                uint256 refQty,
                 string memory logicString,
+                uint256 refQty,
                 uint256 start,
                 uint256 exp,
                 bool sigValid
@@ -188,11 +159,11 @@ contract LPG is ERC721S, Ownable, SignedAllowance {
 
                 validateSignature(to, nonce, signature); //throws if signature is invalid
 
-                return (uint256(uint128(nonce)), 
-                        uint256((uint16(data>>96))>>2), 
-                        logicString, 
-                        uint256(uint48(data>>48)), 
-                        uint256(uint48(data)), 
+                return (uint256(uint128(nonce)), //price
+                        logicString,        // logic
+                        uint256((uint16(data>>96))>>2), // qty
+                        uint256(uint48(data>>48)),  // start date
+                        uint256(uint48(data)), // exp date
                         true);
     }
 
