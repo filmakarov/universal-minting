@@ -6,6 +6,7 @@ secrets.json
 contracts/backup
 .DS_Storeore
 test/backup
+contracts/temp
 
 #Hardhat files
 cache
