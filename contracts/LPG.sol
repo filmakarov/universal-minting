@@ -23,9 +23,8 @@ contract LPG is ERC721AQueryable, Ownable, SignedAllowance {
                                 GENERAL STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    uint256 public constant MAX_ITEMS = 10000;
+    uint256 public constant MAX_ITEMS = 1000;
     string private baseURI;
-    string private metadataExtension = ".json";
     bool public saleState;
     string public provenanceHash;
     address private reserveMinter;
@@ -46,6 +45,7 @@ contract LPG is ERC721AQueryable, Ownable, SignedAllowance {
                         MINTING LOGIC
     //////////////////////////////////////////////////////////////*/
 
+/*
     function printNonce(uint256 nonce) public view {    
 
         //console.log("Nonce:", nonce);
@@ -69,6 +69,7 @@ contract LPG is ERC721AQueryable, Ownable, SignedAllowance {
         console.log("Qty:", refQty, " Logic: ", logic); 
 
     }
+    */
 
     function mint(address to, uint256 nonce, uint256 mintQty, bytes memory signature) public payable {
         require (saleState, "Sale is not active");
@@ -91,17 +92,7 @@ contract LPG is ERC721AQueryable, Ownable, SignedAllowance {
 
         require (_totalMinted() + mintQty <= MAX_ITEMS, ">MaxSupply");
 
-        //timing
-        if (exp > 0) {
-            // even if start here is 0, that means we only check exp, 
-            // any current block.timestamp will be greater than 0
-            require(block.timestamp <= exp && block.timestamp >= start, "wrong timing");
-        } else {
-            // exp = 0 means we only require being after start. 
-            // if start here is 0 as well, that means we have no timelimits, however,
-            // any block.timestamp will be greater than 0, so it won't revert
-            require(block.timestamp >= start, "wrong timing");
-        }
+        require(block.timestamp >= start && block.timestamp <= exp, "Wrong timing");
 
         require (msg.value >= price*mintQty, "Not Enough Eth sent");
 
@@ -112,7 +103,7 @@ contract LPG is ERC721AQueryable, Ownable, SignedAllowance {
     }
 
     function reserveTokens(address to, uint256 qty) public {
-        require(owner() == _msgSender() || reserveMinter == _msgSender(), "Ownable: caller is not the owner");
+        require(owner() == _msgSender() || reserveMinter == _msgSender(), "Caller is nor reserveMinter nor owner");
         _safeMint(to, qty);
     }
 
@@ -183,18 +174,14 @@ contract LPG is ERC721AQueryable, Ownable, SignedAllowance {
         provenanceHash = _newPH;
     }
 
-    function setMetadataExtension(string memory _newMDExt) public onlyOwner {
-        metadataExtension = _newMDExt;
+    function switchSaleState() public onlyOwner {
+        saleState = !saleState;
     }
 
     /// @notice sets allowance signer, this can be used to revoke all unused allowances already out there
     /// @param newSigner the new signer
     function setAllowancesSigner(address newSigner) external onlyOwner {
         _setAllowancesSigner(newSigner);
-    }
-
-    function switchSaleState() public onlyOwner {
-        saleState = !saleState;
     }
 
     /// @notice Withdraws funds from the contract to msg.sender who is always the owner.

@@ -4,6 +4,7 @@ const { expect } = require('chai');
 // Import utilities from Test Helpers
 const { BN, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 const { deployments, getNamedAccounts, ethers } = require('hardhat');
+const ConsoleProgressBar = require('console-progress-bar');
 
 const toBN = ethers.BigNumber.from;
 
@@ -75,10 +76,11 @@ describe('NFT contr tests', () => {
     it('deploys with correct base URI', async function () {
       const mintQty = 1;
       
-      // MINT TOKEN
+      nftContract.connect(deployer).reserveTokens(await random2.getAddress(), mintQty);
 
-      //expect(await nftContract.tokenURI((await nftContract.nextTokenIndex()).sub(1))).to.include(mybaseURI);
+      expect(await nftContract.tokenURI(await nftContract.lastTokenId())).to.include(mybaseURI);
     });
+
     it('deploys with 0 tokens', async function () {
       expect(await nftContract.totalSupply()).to.equal(0);
     });
@@ -154,262 +156,393 @@ describe('Mint tests', async function () {
     ).to.be.reverted;          
   });
   
-  /*
   
-  it('can mint token with a signature', async function () {
-
-    const mintQty = 3;
-    const itemPrice = jsPresalePrice;
-
-    const { nonce: nonce, signature: allowance } = await signAllowance(
-        await random.getAddress(),
-        mintQty,
-        Math.floor(Math.random() * 1000 * (await provider.getBlockNumber())), //some random allowance id
-        itemPrice //price
-    );
-      
-    let totalCost = ethers.BigNumber.from(mintQty).mul(itemPrice);
-    await minterContr.connect(random).presaleOrder(await random.getAddress(), nonce, allowance, {value: totalCost});
-
-    expect(
-        await nftContract.balanceOf(await random.getAddress()),
-    ).to.be.equal(mintQty);
-});
-
 it('can free mint token with a signature', async function () {
 
-  const mintQty = 1;
-  const itemPrice = ethers.BigNumber.from(0);
+  let refQty = 12;
+  let logic = 1;
+  let startingFrom = parseInt(+new Date() / 1000);  // now
+  let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+  let itemPrice = toBN(0);
 
   const { nonce: nonce, signature: allowance } = await signAllowance(
-      await random.getAddress(),
-      mintQty,
-      Math.floor(Math.random() * 1000 * (await provider.getBlockNumber())), //some random allowance id
-      itemPrice //price
+    await holder.getAddress(), // who can use
+    Math.floor(Math.random() * 65530), //some random allowance id
+    refQty, // quantity to compare to
+    logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+    startingFrom,
+    expiringAt,
+    itemPrice //price
   );
     
-  let totalCost = ethers.BigNumber.from(mintQty).mul(itemPrice);
-  await minterContr.connect(random).presaleOrder(await random.getAddress(), nonce, allowance, {value: totalCost});
+  let mintQty = 10; //Math.floor(Math.random() * 10) + 1;
+  let mintCost = itemPrice.mul(mintQty);
+
+  await nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
 
   expect(
-      await nftContract.balanceOf(await random.getAddress()),
+      await nftContract.balanceOf(await holder.getAddress()),
   ).to.be.equal(mintQty);
 });
 
+
 it('can mint token with an allowance made for other person that was not used yet to other person wallet', async function () {
 
-    const mintQty = 1;
-    const itemPrice = jsPresalePrice;
+  let refQty = 12;
+  let logic = 1;
+  let startingFrom = parseInt(+new Date() / 1000);  // now
+  let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+  let itemPrice = toBN(10).pow(17);
 
-    const { nonce: nonce, signature: allowance } = await signAllowance(
-        await random.getAddress(),
-        mintQty,
-        Math.floor(Math.random() * 1000 * (await provider.getBlockNumber())), //some random allowance id
-        itemPrice 
-    );
+  const { nonce: nonce, signature: allowance } = await signAllowance(
+    await holder.getAddress(), // who can use
+    Math.floor(Math.random() * 65530), //some random allowance id
+    refQty, // quantity to compare to
+    logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+    startingFrom,
+    expiringAt,
+    itemPrice //price
+  );
+    
+  let mintQty = 10; //Math.floor(Math.random() * 10) + 1;
+  let mintCost = itemPrice.mul(mintQty);
       
-    let totalCost = ethers.BigNumber.from(mintQty).mul(itemPrice);
-    await minterContr.connect(random2).presaleOrder(await random.getAddress(), nonce, allowance, {value: totalCost});
+  await nftContract.connect(random2).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
 
     expect(
-        await nftContract.balanceOf(await random.getAddress()),
+        await nftContract.balanceOf(await holder.getAddress()),
     ).to.be.equal(mintQty);
 });
  
 it('can mint several quotas with same capacity but diff nonce', async function () {
 
-  const mintQty = 1;
   const quotas = 5;
-  const itemPrice = jsPresalePrice;
+
+  let refQty = 12;
+  let logic = 1;
+  let startingFrom = parseInt(+new Date() / 1000);  // now
+  let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+  let itemPrice = toBN(10).pow(17);
+
+  let mintQty = 10; //Math.floor(Math.random() * 10) + 1;
 
   for (let i=0; i<quotas; i++) {
     const { nonce: nonce, signature: allowance } = await signAllowance(
-        await random.getAddress(),
-        mintQty,
-        Math.floor(Math.random() * 1000), //some random allowance id
-        itemPrice 
+      await holder.getAddress(), // who can use
+      Math.floor(Math.random() * 65530), //some random allowance id
+      refQty, // quantity to compare to
+      logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+      startingFrom,
+      expiringAt,
+      itemPrice //price
     );
+      
+    let mintCost = itemPrice.mul(mintQty);
 
-    let totalCost = ethers.BigNumber.from(mintQty).mul(itemPrice);
-    await minterContr.connect(random).presaleOrder(await random.getAddress(), nonce, allowance, {value: totalCost});
+    await nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
 
   }
   expect(
-      await nftContract.balanceOf(await random.getAddress()),
+      await nftContract.balanceOf(await holder.getAddress()),
   ).to.be.equal(mintQty*quotas);
 });
 
 it('cannot reuse signature', async function () {
+  let refQty = 12;
+  let logic = 1;
+  let startingFrom = parseInt(+new Date() / 1000);  // now
+  let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+  let itemPrice = toBN(10).pow(17);
 
-  const mintQty = 1;
-  const itemPrice = jsPresalePrice;
+  const { nonce: nonce, signature: allowance } = await signAllowance(
+    await holder.getAddress(), // who can use
+    Math.floor(Math.random() * 65530), //some random allowance id
+    refQty, // quantity to compare to
+    logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+    startingFrom,
+    expiringAt,
+    itemPrice //price
+  );
+    
+  let mintQty = 10; //Math.floor(Math.random() * 10) + 1;
+  let mintCost = itemPrice.mul(mintQty);
 
-  const allowId = Math.floor(Math.random() * 1000 * (await provider.getBlockNumber()));
-    const { nonce: nonce, signature: allowance } = await signAllowance(
-        await random.getAddress(),
-        mintQty,
-        allowId,
-        itemPrice 
-    );
-
-    let totalCost = ethers.BigNumber.from(mintQty).mul(itemPrice);
-    await minterContr.connect(random).presaleOrder(await random.getAddress(), nonce, allowance, {value: totalCost});
+  await nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
 
   await expect(
-    minterContr.connect(random).presaleOrder(await random.getAddress(), nonce, allowance, {value: totalCost}),
+    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
   ).to.be.revertedWith('!ALREADY_USED!');
 });
 
+
 it('cannot mint to yourself with other persons allowance', async function () {
 
-  const mintQty = 1;
-  const itemPrice = jsPresalePrice;
+  let refQty = 12;
+  let logic = 1;
+  let startingFrom = parseInt(+new Date() / 1000);  // now
+  let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+  let itemPrice = toBN(10).pow(17);
 
-  const allowId = Math.floor(Math.random() * 1000 * (await provider.getBlockNumber()));
-    const { nonce: nonce, signature: allowance } = await signAllowance(
-        await random.getAddress(),
-        mintQty,
-        allowId,
-        itemPrice 
-    );
+  const { nonce: nonce, signature: allowance } = await signAllowance(
+    await random2.getAddress(), // who can use
+    Math.floor(Math.random() * 65530), //some random allowance id
+    refQty, // quantity to compare to
+    logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+    startingFrom,
+    expiringAt,
+    itemPrice //price
+  );
+    
+  let mintQty = 10; //Math.floor(Math.random() * 10) + 1;
+  let mintCost = itemPrice.mul(mintQty);
 
-    let totalCost = ethers.BigNumber.from(mintQty).mul(itemPrice);
   await expect(
-    minterContr.connect(random2).presaleOrder(await random2.getAddress(), nonce, allowance, {value: totalCost}),
+    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
   ).to.be.revertedWith('!INVALID_SIGNATURE!');
 });
+
 
 it('cannot mint with signature by wrong signer', async function () {
 
-  const mintQty = 1;
-  const itemPrice = jsPresalePrice;
+  let refQty = 12;
+  let logic = 1;
+  let startingFrom = parseInt(+new Date() / 1000);  // now
+  let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+  let itemPrice = toBN(10).pow(17);
 
-    const { nonce: nonce, signature: allowance } = await signAllowance(
-        await random.getAddress(),
-        mintQty,
-        Math.floor(Math.random() * 1000), 
-        itemPrice,
-        random2
-    );
+  const { nonce: nonce, signature: allowance } = await signAllowance(
+    await holder.getAddress(), // who can use
+    Math.floor(Math.random() * 65530), //some random allowance id
+    refQty, // quantity to compare to
+    logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+    startingFrom,
+    expiringAt,
+    itemPrice, //price
+    random
+  );
+    
+  let mintQty = 10; //Math.floor(Math.random() * 10) + 1;
+  let mintCost = itemPrice.mul(mintQty);
 
-    let totalCost = ethers.BigNumber.from(mintQty).mul(itemPrice);
   await expect(
-    minterContr.connect(random).presaleOrder(await random.getAddress(), nonce, allowance, {value: totalCost}),
+    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
   ).to.be.revertedWith('!INVALID_SIGNATURE!');
 });
+
 
 it('cannot mint with previously valid signature when we revoked everyhting by changing signer in the contract', async function () {
   
-  const mintQty = 1;
-  const itemPrice = jsPresalePrice;
+  let refQty = 12;
+  let logic = 1;
+  let startingFrom = parseInt(+new Date() / 1000);  // now
+  let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+  let itemPrice = toBN(10).pow(17);
 
   const { nonce: nonce, signature: allowance } = await signAllowance(
-        await random.getAddress(),
-        mintQty,
-        Math.floor(Math.random() * 1000),
-        itemPrice  
+    await holder.getAddress(), // who can use
+    Math.floor(Math.random() * 65530), //some random allowance id
+    refQty, // quantity to compare to
+    logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+    startingFrom,
+    expiringAt,
+    itemPrice //price
   );
+    
+  let mintQty = 10; //Math.floor(Math.random() * 10) + 1;
+  let mintCost = itemPrice.mul(mintQty);
   
-  let totalCost = ethers.BigNumber.from(mintQty).mul(itemPrice);
-  await minterContr.connect(deployer).setAllowancesSigner(random.address);
+  await nftContract.connect(deployer).setAllowancesSigner(random.address);
   
   await expect(
-    minterContr.connect(random).presaleOrder(await random.getAddress(), nonce, allowance, {value: totalCost}),
+    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
   ).to.be.revertedWith('!INVALID_SIGNATURE!');
 });
+
 
 it('non owner can not change signer', async function () {
   await expect(
-    minterContr.connect(random).setAllowancesSigner(random.address),
+    nftContract.connect(random).setAllowancesSigner(random.address),
   ).to.be.revertedWith('Ownable: caller is not the owner');
 });
 
+
 it('cannot mint with increased nonce', async function () {
 
-  const mintQty = ethers.BigNumber.from(1);
-  const itemPrice = jsPresalePrice;
+  let refQty = 12;
+  let logic = 1;
+  let startingFrom = parseInt(+new Date() / 1000);  // now
+  let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+  let itemPrice = toBN(10).pow(17);
 
   const { nonce: nonce, signature: allowance } = await signAllowance(
-        await random.getAddress(),
-        mintQty,
-        Math.floor(Math.random() * 1000), 
-        itemPrice 
+    await holder.getAddress(), // who can use
+    Math.floor(Math.random() * 65530), //some random allowance id
+    refQty, // quantity to compare to
+    logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+    startingFrom,
+    expiringAt,
+    itemPrice //price
   );
+    
+  let mintQty = 10; //Math.floor(Math.random() * 10) + 1;
+  let mintCost = itemPrice.mul(mintQty);
 
   const nonce2 = nonce.add(toBN(2).shl(128));
 
-  let totalCost = ethers.BigNumber.from(mintQty.add(2)).mul(itemPrice);
-
   await expect(
-    minterContr.connect(random).presaleOrder(await random.getAddress(), nonce2, allowance, {value: totalCost}),
+    nftContract.connect(holder).mint(await holder.getAddress(), nonce2, mintQty, allowance, {value: mintCost}),
   ).to.be.revertedWith('!INVALID_SIGNATURE!');
 });
 
+
 it('cannot manipulate signature', async function () {
 
-  const mintQty = 1;
-  const itemPrice = jsPresalePrice;
+  let refQty = 12;
+  let logic = 1;
+  let startingFrom = parseInt(+new Date() / 1000);  // now
+  let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+  let itemPrice = toBN(10).pow(17);
 
-    let { nonce: nonce, signature: allowance } = await signAllowance(
-        await random.getAddress(),
-        mintQty,
-        Math.floor(Math.random() * 1000), //345,
-        itemPrice 
-    );
+  const { nonce: nonce, signature: allowance } = await signAllowance(
+    await holder.getAddress(), // who can use
+    Math.floor(Math.random() * 65530), //some random allowance id
+    refQty, // quantity to compare to
+    logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+    startingFrom,
+    expiringAt,
+    itemPrice //price
+  );
+    
+  let mintQty = 10; //Math.floor(Math.random() * 10) + 1;
+  let mintCost = itemPrice.mul(mintQty);
 
-    allowance =
+  let allowance2 =
           '0x45eacf01' + allowance.substr(-(allowance.length - 10));
 
-    let totalCost = ethers.BigNumber.from(mintQty).mul(itemPrice);
   await expect(
-    minterContr.connect(random).presaleOrder(await random.getAddress(), nonce, allowance, {value: totalCost}),
+    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance2, {value: mintCost}),
   ).to.be.reverted;
 }); 
 
+
+
 it('can not order before presale started', async function () {
-  let tx = await minterContr.connect(deployer).switchPresale();
+  let tx = await nftContract.connect(deployer).switchSaleState();
   await tx.wait();
 
-  expect((await minterContr.presaleActive())).to.be.false;
+  expect((await nftContract.saleState())).to.be.false;
 
-  const mintQty = 1;
-  const itemPrice = ethers.BigNumber.from(0);
-  
+  let refQty = 12;
+  let logic = 1;
+  let startingFrom = parseInt(+new Date() / 1000);  // now
+  let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+  let itemPrice = toBN(10).pow(17);
+
   const { nonce: nonce, signature: allowance } = await signAllowance(
-        await random.getAddress(),
-        mintQty,
-        Math.floor(Math.random() * 1000 * (await provider.getBlockNumber())), //some random allowance id
-        itemPrice 
+    await holder.getAddress(), // who can use
+    Math.floor(Math.random() * 65530), //some random allowance id
+    refQty, // quantity to compare to
+    logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+    startingFrom,
+    expiringAt,
+    itemPrice //price
   );
-      
-  let totalCost = ethers.BigNumber.from(mintQty).mul(itemPrice);
+    
+  let mintQty = 10; //Math.floor(Math.random() * 10) + 1;
+  let mintCost = itemPrice.mul(mintQty);
 
   await expect (
-    minterContr.connect(random).presaleOrder(await random.getAddress(), nonce, allowance, {value: totalCost}),
-  ).to.be.revertedWith('Presale not active');          
+    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+  ).to.be.revertedWith('Sale is not active');          
 });
-*/
 
-// Commented out as price is 0 here and we do not even check for it
-/*
+
 it('cannot presale mint with incorrect price if it is not 0', async function () {
 
-  const mintQty = 2;
-  const itemPrice = toBN(20000000000);
+  let refQty = 12;
+  let logic = 1;
+  let startingFrom = parseInt(+new Date() / 1000);  // now
+  let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+  let itemPrice = toBN(10).pow(17);
 
+  const { nonce: nonce, signature: allowance } = await signAllowance(
+    await holder.getAddress(), // who can use
+    Math.floor(Math.random() * 65530), //some random allowance id
+    refQty, // quantity to compare to
+    logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+    startingFrom,
+    expiringAt,
+    itemPrice //price
+  );
+    
+  let mintQty = toBN(10); //Math.floor(Math.random() * 10) + 1;
+  let mintCost = mintQty.mul(itemPrice.sub(10000000));
+
+  await expect(
+    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+  ).to.be.revertedWith('Not Enough Eth sent');
+});
+
+it('can not order Over Capacity', async function () {
+  
+  let mintQty = 10;
+  const capacity = await nftContract.unclaimedSupply();
+  
+  const cycles = capacity / mintQty;
+
+  const consoleProgressBar = new ConsoleProgressBar({ maxValue: cycles });
+
+  let refQty = 12;
+  let logic = 1;
+  let startingFrom = parseInt(+new Date() / 1000);  // now
+  let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+  let itemPrice = toBN(10).pow(17);
+    
+  mintQty = toBN(mintQty); //Math.floor(Math.random() * 10) + 1;
+  let mintCost = mintQty.mul(itemPrice);
+
+  // claim all tokens
+  for (let i=0; i<cycles; i++) {
+    
     const { nonce: nonce, signature: allowance } = await signAllowance(
-        await random.getAddress(),
-        mintQty,
-        Math.floor(Math.random() * 1000), 
-        itemPrice
+      await holder.getAddress(), // who can use
+      Math.floor(Math.random() * 65530), //some random allowance id
+      refQty, // quantity to compare to
+      logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+      startingFrom,
+      expiringAt,
+      itemPrice //price
     );
 
-    let totalCost = ethers.BigNumber.from(mintQty).mul(itemPrice.sub(10000000000));
-  await expect(
-    minterContr.connect(random).presaleOrder(await random.getAddress(), nonce, allowance, {value: totalCost}),
-  ).to.be.revertedWith('Minter: Not Enough Eth');
+    await nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
+    //if (i>6660) { console.log("unclaimed: ",await nftContract.unclaimedSupply() ); }
+    consoleProgressBar.addValue(1);
+  }
+
+  //console.log("full mint ok");
+
+  // all tokens are claimed
+  expect(await nftContract.unclaimedSupply()).to.equal(0);
+  //console.log("unclaimed: ",await nftContract.unclaimedSupply() );
+
+  // exceeded mint
+  const { nonce: nonce, signature: allowance } = await signAllowance(
+    await holder.getAddress(), // who can use
+    Math.floor(Math.random() * 65530), //some random allowance id
+    refQty, // quantity to compare to
+    logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+    startingFrom,
+    expiringAt,
+    itemPrice //price
+  );
+
+  await expect (
+
+    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+
+  ).to.be.revertedWith('>MaxSupply');          
 });
-*/
+
 
 });
 
@@ -421,68 +554,6 @@ it('cannot presale mint with incorrect price if it is not 0', async function () 
 
 describe('Admin functions tests', async function () {
 
-  /*
-  it('can change unrevealedUri', async function () {
-
-    let oldBaseUri = unrevURI;
-    
-    let newUnrevBaseExp = "site.com";
-    let tx = await nftContract.connect(deployer).setUnrevURI(newUnrevBaseExp);
-    await tx.wait();
-
-    const mintQty = 1;
-    const itemPrice = await minterContr.presalePrice();
-
-    const { nonce: nonce, signature: allowance } = await signAllowance(
-        await random.getAddress(),
-        mintQty,
-        Math.floor(Math.random() * 1000 * (await provider.getBlockNumber())), //some random allowance id
-        itemPrice //price
-    );
-      
-    let totalCost = ethers.BigNumber.from(mintQty).mul(itemPrice);
-    await minterContr.connect(random).presaleOrder(await random.getAddress(), nonce, allowance, {value: totalCost});
-
-    let tokenId = (await nftContract.nextTokenIndex()).sub(1);
-    let newUnrevBaseSet = await nftContract.tokenURI(tokenId);
-    
-    expect(newUnrevBaseSet).to.equal(newUnrevBaseExp).and.to.not.equal(oldBaseUri);
-  }); 
-
-  it('can not set UnrevURI if not admin: test onlyOwner function', async function () {
-    await expect(
-        nftContract.connect(random).setUnrevURI("fddfsf"),
-    ).to.be.revertedWith('Ownable: caller is not the owner');
-  });
-
-  it('can not reveal if not admin: test onlyOwner function', async function () {
-    await expect(
-        nftContract.connect(random).setRevealState(true),
-    ).to.be.revertedWith('Ownable: caller is not the owner');
-  });
-
-  it('can reveal', async function () {
-    const mintQty = 1;
-    const itemPrice = await minterContr.presalePrice();
-
-    const { nonce: nonce, signature: allowance } = await signAllowance(
-        await random.getAddress(),
-        mintQty,
-        Math.floor(Math.random() * 1000 * (await provider.getBlockNumber())), //some random allowance id
-        itemPrice //price
-    );
-      
-    let totalCost = ethers.BigNumber.from(mintQty).mul(itemPrice);
-    await minterContr.connect(random).presaleOrder(await random.getAddress(), nonce, allowance, {value: totalCost});
-
-    expect(await nftContract.tokenURI((await nftContract.nextTokenIndex()).sub(1))).to.include(unrevURI);
-    
-    await nftContract.connect(deployer).setRevealState(true);
-
-    expect(await nftContract.tokenURI((await nftContract.nextTokenIndex()).sub(1))).to.include(mybaseURI).and.not.include(unrevURI);
-
-  });
-
   it('can not set BaseUri if not admin: test onlyOwner function', async function () {
     await expect(
         nftContract.connect(random).setBaseURI("234234234"),
@@ -491,71 +562,84 @@ describe('Admin functions tests', async function () {
 
   it('can change baseURI', async function () {
 
-    const mintQty = (await minterContr.maxPerMint());
-    let totalCost = ethers.BigNumber.from(mintQty).mul(await minterContr.publicSalePrice());
+    let refQty = 12;
+    let logic = 1;
+    let startingFrom = parseInt(+new Date() / 1000);  // now
+    let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+    let itemPrice = toBN(10).pow(17);
 
-    await minterContr.connect(random).publicOrder(await random.getAddress(), mintQty, {value: totalCost});
+    const { nonce: nonce, signature: allowance } = await signAllowance(
+      await holder.getAddress(), // who can use
+      Math.floor(Math.random() * 65530), //some random allowance id
+      refQty, // quantity to compare to
+      logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+      startingFrom,
+      expiringAt,
+      itemPrice //price
+    );
+    
+    let mintQty = toBN(10); //Math.floor(Math.random() * 10) + 1;
+    let mintCost = mintQty.mul(itemPrice);
 
-    let tx1 = await nftContract.connect(deployer).setRevealState(true);
-    await tx1.wait();
+    await nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
 
-    let oldVal = await nftContract.tokenURI((await nftContract.nextTokenIndex()).sub(1));
+    let token = await nftContract.lastTokenId();
+
+    let oldVal = await nftContract.tokenURI(token);
     let oldBaseURI = mybaseURI;
     
     let newBaseURI = "https://newBaseURI1212.com/";
     let tx = await nftContract.connect(deployer).setBaseURI(newBaseURI);
     await tx.wait();
 
-    let newValSet = await nftContract.tokenURI((await nftContract.nextTokenIndex()).sub(1));
+    let newValSet = await nftContract.tokenURI(token);
 
     //console.log("Metadata example: ", newValSet);
     
     expect(newValSet).to.include(newBaseURI).and.not.include(oldVal).and.not.include(oldBaseURI);
   });
 
-  it('can not set Minter if not admin: test onlyOwner function', async function () {
+  it('can not set reserve minter if not admin: test onlyOwner function', async function () {
     await expect(
-        nftContract.connect(random).setMinter(random.getAddress()),
+        nftContract.connect(random).setReserveMinter(random.getAddress()),
+    ).to.be.revertedWith('Ownable: caller is not the owner');
+  });
+  
+  it('can set reserve minter and mint', async function () {
+
+    let mintQty = 1;
+    await expect(
+        nftContract.connect(random).reserveTokens(await random.getAddress(), mintQty),
+    ).to.be.revertedWith('Caller is nor reserveMinter nor owner');
+    expect(await nftContract.balanceOf(await random.getAddress())).to.equal(0);
+    await nftContract.connect(deployer).setReserveMinter(await random.getAddress());
+    await nftContract.connect(random).reserveTokens(await random.getAddress(), mintQty);
+    expect(await nftContract.balanceOf(await random.getAddress())).to.equal(mintQty);
+
+  });
+
+  it('can not set prov hash if not admin: test onlyOwner function', async function () {
+    await expect(
+        nftContract.connect(random).setProvenanceHash("0xwgkj9ug389"),
     ).to.be.revertedWith('Ownable: caller is not the owner');
   });
 
-  it('can not set GEN2 if not admin: test onlyOwner function', async function () {
+  it('can set Provenance hash', async function () {
+
+    let newPH = "0x2397234829834823";
+    expect(await nftContract.provenanceHash()).to.not.include(newPH);
+    await nftContract.connect(deployer).setProvenanceHash(newPH);
+    expect(await nftContract.provenanceHash()).to.equal(newPH);
+
+  });
+
+  it('can not switch sale state if not admin: test onlyOwner function', async function () {
     await expect(
-        nftContract.connect(random).setADG2(random.getAddress()),
+        nftContract.connect(random).switchSaleState(),
     ).to.be.revertedWith('Ownable: caller is not the owner');
   });
 
-  it('can not set metadata ext if not admin: test onlyOwner function', async function () {
-    await expect(
-        nftContract.connect(random).setMetadataExtension(".exe"),
-    ).to.be.revertedWith('Ownable: caller is not the owner');
-  });
-
-  it('admin can change metadata extension', async function () {
-
-    const mintQty = (await minterContr.maxPerMint());
-    let totalCost = ethers.BigNumber.from(mintQty).mul(await minterContr.publicSalePrice());
-
-    await minterContr.connect(random).publicOrder(await random.getAddress(), mintQty, {value: totalCost});
-
-    let tx1 = await nftContract.connect(deployer).setRevealState(true);
-    await tx1.wait();
-
-    let oldVal = await nftContract.tokenURI((await nftContract.nextTokenIndex()).sub(1));
-    let oldExt = ".json"
-    
-    let newExt = ".txt";
-    let tx = await nftContract.connect(deployer).setMetadataExtension(newExt);
-    await tx.wait();
-
-    let newValSet = await nftContract.tokenURI((await nftContract.nextTokenIndex()).sub(1));
-
-    //console.log("Metadata example: ", newValSet);
-    
-    expect(newValSet).to.include(newExt).and.not.include(oldVal).and.not.include(oldExt);
-  });
-
-  */
+  
 
 });
 
@@ -576,7 +660,7 @@ describe('View functions tests', async function () {
     //console.log("Starting From: ", startingFrom, " expiringAt: ", expiringAt);
     let itemPrice = toBN(10).pow(17); // 0.1eth
     
-    console.log("SENT: Price: %i, Qty: %s %i, Start: %i, End: %i", itemPrice, logic, refQty, startingFrom, expiringAt);
+    //console.log("SENT: Price: %i, Qty: %s %i, Start: %i, End: %i", itemPrice, logic, refQty, startingFrom, expiringAt);
 
     const { nonce: nonce, signature: allowance } = await signAllowance(
           await holder.getAddress(), // who can use
@@ -603,8 +687,61 @@ describe('View functions tests', async function () {
     expect(startV).to.equal(startingFrom);
     expect(expV).to.equal(expiringAt);
 
+  });
+
 });
 
+
+/*  ====== ====== ====== ====== ====== ======
+*   
+*   WITHDRAWALS TESTS
+* 
+* ====== ====== ====== ====== ======  ====== */
+
+describe('Withdrawals tests', async function () {
+ 
+  it('can not withdraw if not admin', async function () {
+    await expect(
+        nftContract.connect(random).withdraw(100000),
+    ).to.be.revertedWith('Ownable: caller is not the owner');
+  });
+
+  it('can withdraw', async function () {
+    let amt = toBN(10).pow(17); //0.1 eth
+
+    let refQty = 12;
+    let logic = 1;
+    let startingFrom = parseInt(+new Date() / 1000);  // now
+    let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+    let itemPrice = toBN(10).pow(17);
+
+    const { nonce: nonce, signature: allowance } = await signAllowance(
+      await holder.getAddress(), // who can use
+      Math.floor(Math.random() * 65530), //some random allowance id
+      refQty, // quantity to compare to
+      logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+      startingFrom,
+      expiringAt,
+      itemPrice //price
+    );
+    
+    let mintQty = toBN(10); //Math.floor(Math.random() * 10) + 1;
+    let mintCost = mintQty.mul(itemPrice);
+
+    await nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
+        
+    let balBefore = toBN(await deployer.getBalance());
+    
+    let txW = await nftContract.connect(deployer).withdraw(amt);
+    await txW.wait();
+
+    let balAfter = await deployer.getBalance();
+
+    let diff = balAfter.sub(balBefore);
+    //console.log("Diff: ", ethers.utils.formatUnits(diff, unit = "ether"), "eth");
+    expect(diff).to.be.above(amt.sub(toBN(10).pow(16)));
+
+  });
 
 });
 
