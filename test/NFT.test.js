@@ -103,6 +103,8 @@ describe('Mint tests', async function () {
     let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
     //console.log("Starting From: ", startingFrom, " expiringAt: ", expiringAt);
     let itemPrice = toBN(10).pow(17); // 0.1eth
+
+    expect(await nftContract.balanceOf(await holder.getAddress())).to.equal(0);
     
     for (let i=0; i<10; i++) {
 
@@ -126,28 +128,234 @@ describe('Mint tests', async function () {
         await nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
 
     }
+    
+    expect(await nftContract.balanceOf(await holder.getAddress())).to.equal(100);
 
   });
 
-  // can not mint more or less when logic = 0
+  it('can not mint more or less when logic = 0', async function () {
 
-  // can not mint more when logic = 1
+    let refQty = 12;
+    let logic = 0;
+    let startingFrom = parseInt(+new Date() / 1000);  // now
+    let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+    //console.log("Starting From: ", startingFrom, " expiringAt: ", expiringAt);
+    let itemPrice = toBN(10).pow(17); // 0.1eth
+    
+    const { nonce: nonce, signature: allowance } = await signAllowance(
+          await holder.getAddress(), // who can use
+          Math.floor(Math.random() * 65530), //some random allowance id
+          refQty, // quantity to compare to
+          logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+          startingFrom,
+          expiringAt,
+          itemPrice //price
+    ); 
 
-  // can not mint less when logic = 2
+    let mintQty = refQty-2; //Math.floor(Math.random() * 10) + 1;
+    let mintCost = itemPrice.mul(mintQty);
+
+    await expect(
+      nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+    ).to.be.revertedWith("Wrong amount, eq");
+
+    mintQty = refQty+2; //Math.floor(Math.random() * 10) + 1;
+    mintCost = itemPrice.mul(mintQty);
+
+    await expect(
+      nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+    ).to.be.revertedWith("Wrong amount, eq");
+
+  });
+
+  it('can not mint more when logic = 1', async function () {
+
+    let refQty = 12;
+    let logic = 1;
+    let startingFrom = parseInt(+new Date() / 1000);  // now
+    let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+    //console.log("Starting From: ", startingFrom, " expiringAt: ", expiringAt);
+    let itemPrice = toBN(10).pow(17); // 0.1eth
+    
+    const { nonce: nonce, signature: allowance } = await signAllowance(
+          await holder.getAddress(), // who can use
+          Math.floor(Math.random() * 65530), //some random allowance id
+          refQty, // quantity to compare to
+          logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+          startingFrom,
+          expiringAt,
+          itemPrice //price
+    ); 
+
+    mintQty = refQty+2; //Math.floor(Math.random() * 10) + 1;
+    mintCost = itemPrice.mul(mintQty);
+
+    await expect(
+      nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+    ).to.be.revertedWith("Wrong amount, leq");
+
+  });
+
+  it('can not mint less when logic = 2', async function () {
+
+    let refQty = 12;
+    let logic = 2;
+    let startingFrom = parseInt(+new Date() / 1000);  // now
+    let expiringAt = startingFrom + 7 * 24 * 60 * 60; // + 1 week from now
+    //console.log("Starting From: ", startingFrom, " expiringAt: ", expiringAt);
+    let itemPrice = toBN(10).pow(17); // 0.1eth
+    
+    const { nonce: nonce, signature: allowance } = await signAllowance(
+          await holder.getAddress(), // who can use
+          Math.floor(Math.random() * 65530), //some random allowance id
+          refQty, // quantity to compare to
+          logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+          startingFrom,
+          expiringAt,
+          itemPrice //price
+    ); 
+
+    mintQty = refQty-2; //Math.floor(Math.random() * 10) + 1;
+    mintCost = itemPrice.mul(mintQty);
+
+    await expect(
+      nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+    ).to.be.revertedWith("Wrong amount, geq");
+
+  });
 
   // can mint with correct amount and correct logic
+  // See above 'can mint with valid signature'
 
   // can not mint with wrong price
+  // See below 'cannot presale mint with incorrect price if it is not 0' 
 
-  // can mint during the correct both sided temframe 
+  // can mint during the correct both sided timframe
+  // See above 'can mint with valid signature' 
 
-  // can mint dring the correct one sided timeframe with only startdate
+  // can mint during the correct one sided timeframe with only startdate
+  // 	exp = 33215818994 = 3022 year
+  it('can mint during the correct one sided timeframe with only startdate', async function () {
 
-  // can mint dring the correct one sided timeframe with only enddate
+    expect(await nftContract.balanceOf(await holder.getAddress())).to.equal(0);
 
-  // can not mint with before startdate
+    let refQty = 12;
+    let logic = 1;
+    let startingFrom = parseInt(+new Date() / 1000) - 1000;  // now - 1000;
+    let expiringAt = 33215818994; // 3022
+
+    let itemPrice = toBN(10).pow(17); // 0.1eth
+    
+    const { nonce: nonce, signature: allowance } = await signAllowance(
+          await holder.getAddress(), // who can use
+          Math.floor(Math.random() * 65530), //some random allowance id
+          refQty, // quantity to compare to
+          logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+          startingFrom,
+          expiringAt,
+          itemPrice //price
+    ); 
+
+    mintQty = refQty-2; //Math.floor(Math.random() * 10) + 1;
+    mintCost = itemPrice.mul(mintQty);
+
+    await nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
+
+    expect(await nftContract.balanceOf(await holder.getAddress())).to.equal(mintQty);
+
+  });
+
+  // can mint during the correct one sided timeframe with only enddate
+  // start = 0
+
+  it('can mint during the correct one sided timeframe with only enddate', async function () {
+
+    expect(await nftContract.balanceOf(await holder.getAddress())).to.equal(0);
+
+    let refQty = 12;
+    let logic = 1;
+    let startingFrom = 0;  // now - 1000;
+    let expiringAt = parseInt(+new Date() / 1000) + 10000; // 
+
+    let itemPrice = toBN(10).pow(17); // 0.1eth
+    
+    const { nonce: nonce, signature: allowance } = await signAllowance(
+          await holder.getAddress(), // who can use
+          Math.floor(Math.random() * 65530), //some random allowance id
+          refQty, // quantity to compare to
+          logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+          startingFrom,
+          expiringAt,
+          itemPrice //price
+    ); 
+
+    mintQty = refQty-2; //Math.floor(Math.random() * 10) + 1;
+    mintCost = itemPrice.mul(mintQty);
+
+    await nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
+
+    expect(await nftContract.balanceOf(await holder.getAddress())).to.equal(mintQty);
+
+  });
+
+  it('can not mint before startdate', async function () {
+
+    expect(await nftContract.balanceOf(await holder.getAddress())).to.equal(0);
+
+    let refQty = 12;
+    let logic = 1;
+    let startingFrom = parseInt(+new Date() / 1000) + 1000;  // now - 1000;
+    let expiringAt = 33215818994; // 3022
+
+    let itemPrice = toBN(10).pow(17); // 0.1eth
+    
+    const { nonce: nonce, signature: allowance } = await signAllowance(
+          await holder.getAddress(), // who can use
+          Math.floor(Math.random() * 65530), //some random allowance id
+          refQty, // quantity to compare to
+          logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+          startingFrom,
+          expiringAt,
+          itemPrice //price
+    ); 
+
+    mintQty = refQty-2; //Math.floor(Math.random() * 10) + 1;
+    mintCost = itemPrice.mul(mintQty);
+
+    await expect (nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+      ).to.be.revertedWith("Wrong timing");
+
+  });
 
   // can not mint after enddate
+  it('can not mint after enddate', async function () {
+
+    expect(await nftContract.balanceOf(await holder.getAddress())).to.equal(0);
+
+    let refQty = 12;
+    let logic = 1;
+    let startingFrom = parseInt(+new Date() / 1000)-100;  // 
+    let expiringAt = parseInt(+new Date() / 1000); // 
+
+    let itemPrice = toBN(10).pow(17); // 0.1eth
+    
+    const { nonce: nonce, signature: allowance } = await signAllowance(
+          await holder.getAddress(), // who can use
+          Math.floor(Math.random() * 65530), //some random allowance id
+          refQty, // quantity to compare to
+          logic,  // 0 = equal, 1 = lower_or_equal, 2 = greater_or_equal
+          startingFrom,
+          expiringAt,
+          itemPrice //price
+    ); 
+
+    mintQty = refQty-2; //Math.floor(Math.random() * 10) + 1;
+    mintCost = itemPrice.mul(mintQty);
+
+    await expect (nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+      ).to.be.revertedWith("Wrong timing");
+
+  });
 
   it('can not order 0', async function () {
     const mintQty = 0;
@@ -423,8 +631,6 @@ it('cannot manipulate signature', async function () {
     nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance2, {value: mintCost}),
   ).to.be.reverted;
 }); 
-
-
 
 it('can not order before presale started', async function () {
   let tx = await nftContract.connect(deployer).switchSaleState();

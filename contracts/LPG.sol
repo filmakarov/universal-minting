@@ -45,32 +45,6 @@ contract LPG is ERC721AQueryable, Ownable, SignedAllowance {
                         MINTING LOGIC
     //////////////////////////////////////////////////////////////*/
 
-/*
-    function printNonce(uint256 nonce) public view {    
-
-        //console.log("Nonce:", nonce);
-
-        uint256 price = uint256(uint128(nonce));
-        console.log("Price:", price);
-
-        uint256 data = nonce >> 128;
-        //console.log("Data:", data);
-
-        uint256 start = uint256(uint48(data>>48));
-        console.log("Start:", start);
-
-        uint256 exp = uint256(uint48(data));
-        console.log("Expires:", exp);
-        
-        uint256 refQty = uint256((uint16(data>>96))>>2);
-        uint256 logic = (data>>96)&(3);
-        //console.log(1<<2 - 1);
-
-        console.log("Qty:", refQty, " Logic: ", logic); 
-
-    }
-    */
-
     function mint(address to, uint256 nonce, uint256 mintQty, bytes memory signature) public payable {
         require (saleState, "Sale is not active");
 
@@ -83,11 +57,11 @@ contract LPG is ERC721AQueryable, Ownable, SignedAllowance {
 
         // amount
         if (logic == 0) {
-            require(mintQty == refQty, "Wrong amount");
+            require(mintQty == refQty, "Wrong amount, eq");
         } else if (logic == 1) {
-            require(mintQty <= refQty, "Wrong amount");
+            require(mintQty <= refQty, "Wrong amount, leq");
         } else {
-            require(mintQty >= refQty, "Wrong amount");
+            require(mintQty >= refQty, "Wrong amount, geq");
         }
 
         require (_totalMinted() + mintQty <= MAX_ITEMS, ">MaxSupply");
