@@ -125,7 +125,7 @@ describe('Mint tests', async function () {
 
         //console.log(i, " Mint: ", mintQty, "items");
 
-        await nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
+        await nftContract.mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost});
 
     }
     
@@ -156,14 +156,14 @@ describe('Mint tests', async function () {
     let mintCost = itemPrice.mul(mintQty);
 
     await expect(
-      nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+      nftContract.mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost}),
     ).to.be.revertedWith("Wrong amount, eq");
 
     mintQty = refQty+2; //Math.floor(Math.random() * 10) + 1;
     mintCost = itemPrice.mul(mintQty);
 
     await expect(
-      nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+      nftContract.mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost}),
     ).to.be.revertedWith("Wrong amount, eq");
 
   });
@@ -191,7 +191,7 @@ describe('Mint tests', async function () {
     mintCost = itemPrice.mul(mintQty);
 
     await expect(
-      nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+      nftContract.mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost}),
     ).to.be.revertedWith("Wrong amount, leq");
 
   });
@@ -219,7 +219,7 @@ describe('Mint tests', async function () {
     mintCost = itemPrice.mul(mintQty);
 
     await expect(
-      nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+      nftContract.mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost}),
     ).to.be.revertedWith("Wrong amount, geq");
 
   });
@@ -259,7 +259,7 @@ describe('Mint tests', async function () {
     mintQty = refQty-2; //Math.floor(Math.random() * 10) + 1;
     mintCost = itemPrice.mul(mintQty);
 
-    await nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
+    await nftContract.mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost});
 
     expect(await nftContract.balanceOf(await holder.getAddress())).to.equal(mintQty);
 
@@ -292,7 +292,7 @@ describe('Mint tests', async function () {
     mintQty = refQty-2; //Math.floor(Math.random() * 10) + 1;
     mintCost = itemPrice.mul(mintQty);
 
-    await nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
+    await nftContract.mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost});
 
     expect(await nftContract.balanceOf(await holder.getAddress())).to.equal(mintQty);
 
@@ -322,7 +322,7 @@ describe('Mint tests', async function () {
     mintQty = refQty-2; //Math.floor(Math.random() * 10) + 1;
     mintCost = itemPrice.mul(mintQty);
 
-    await expect (nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+    await expect (nftContract.mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost}),
       ).to.be.revertedWith("Wrong timing");
 
   });
@@ -352,7 +352,7 @@ describe('Mint tests', async function () {
     mintQty = refQty-2; //Math.floor(Math.random() * 10) + 1;
     mintCost = itemPrice.mul(mintQty);
 
-    await expect (nftContract.mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+    await expect (nftContract.mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost}),
       ).to.be.revertedWith("Wrong timing");
 
   });
@@ -386,7 +386,7 @@ it('can free mint token with a signature', async function () {
   let mintQty = 10; //Math.floor(Math.random() * 10) + 1;
   let mintCost = itemPrice.mul(mintQty);
 
-  await nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
+  await nftContract.connect(holder).mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost});
 
   expect(
       await nftContract.balanceOf(await holder.getAddress()),
@@ -415,7 +415,7 @@ it('can mint token with an allowance made for other person that was not used yet
   let mintQty = 10; //Math.floor(Math.random() * 10) + 1;
   let mintCost = itemPrice.mul(mintQty);
       
-  await nftContract.connect(random2).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
+  await nftContract.connect(random2).mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost});
 
     expect(
         await nftContract.balanceOf(await holder.getAddress()),
@@ -447,7 +447,7 @@ it('can mint several quotas with same capacity but diff nonce', async function (
       
     let mintCost = itemPrice.mul(mintQty);
 
-    await nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
+    await nftContract.connect(holder).mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost});
 
   }
   expect(
@@ -475,10 +475,10 @@ it('cannot reuse signature', async function () {
   let mintQty = 10; //Math.floor(Math.random() * 10) + 1;
   let mintCost = itemPrice.mul(mintQty);
 
-  await nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
+  await nftContract.connect(holder).mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost});
 
   await expect(
-    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+    nftContract.connect(holder).mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost}),
   ).to.be.revertedWith('!ALREADY_USED!');
 });
 
@@ -505,7 +505,7 @@ it('cannot mint to yourself with other persons allowance', async function () {
   let mintCost = itemPrice.mul(mintQty);
 
   await expect(
-    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+    nftContract.connect(holder).mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost}),
   ).to.be.revertedWith('!INVALID_SIGNATURE!');
 });
 
@@ -533,7 +533,7 @@ it('cannot mint with signature by wrong signer', async function () {
   let mintCost = itemPrice.mul(mintQty);
 
   await expect(
-    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+    nftContract.connect(holder).mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost}),
   ).to.be.revertedWith('!INVALID_SIGNATURE!');
 });
 
@@ -562,7 +562,7 @@ it('cannot mint with previously valid signature when we revoked everyhting by ch
   await nftContract.connect(deployer).setAllowancesSigner(random.address);
   
   await expect(
-    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+    nftContract.connect(holder).mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost}),
   ).to.be.revertedWith('!INVALID_SIGNATURE!');
 });
 
@@ -598,7 +598,7 @@ it('cannot mint with increased nonce', async function () {
   const nonce2 = nonce.add(toBN(2).shl(128));
 
   await expect(
-    nftContract.connect(holder).mint(await holder.getAddress(), nonce2, mintQty, allowance, {value: mintCost}),
+    nftContract.connect(holder).mint(mintQty, await holder.getAddress(), nonce2, allowance, {value: mintCost}),
   ).to.be.revertedWith('!INVALID_SIGNATURE!');
 });
 
@@ -628,7 +628,7 @@ it('cannot manipulate signature', async function () {
           '0x45eacf01' + allowance.substr(-(allowance.length - 10));
 
   await expect(
-    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance2, {value: mintCost}),
+    nftContract.connect(holder).mint(mintQty, await holder.getAddress(), nonce, mintQty, allowance2, {value: mintCost}),
   ).to.be.reverted;
 }); 
 
@@ -658,7 +658,7 @@ it('can not order before presale started', async function () {
   let mintCost = itemPrice.mul(mintQty);
 
   await expect (
-    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+    nftContract.connect(holder).mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost}),
   ).to.be.revertedWith('Sale is not active');          
 });
 
@@ -685,7 +685,7 @@ it('cannot presale mint with incorrect price if it is not 0', async function () 
   let mintCost = mintQty.mul(itemPrice.sub(10000000));
 
   await expect(
-    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+    nftContract.connect(holder).mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost}),
   ).to.be.revertedWith('Not Enough Eth sent');
 });
 
@@ -720,7 +720,7 @@ it('can not order Over Capacity', async function () {
       itemPrice //price
     );
 
-    await nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
+    await nftContract.connect(holder).mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost});
     //if (i>6660) { console.log("unclaimed: ",await nftContract.unclaimedSupply() ); }
     consoleProgressBar.addValue(1);
   }
@@ -744,7 +744,7 @@ it('can not order Over Capacity', async function () {
 
   await expect (
 
-    nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost}),
+    nftContract.connect(holder).mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost}),
 
   ).to.be.revertedWith('>MaxSupply');          
 });
@@ -787,7 +787,7 @@ describe('Admin functions tests', async function () {
     let mintQty = toBN(10); //Math.floor(Math.random() * 10) + 1;
     let mintCost = mintQty.mul(itemPrice);
 
-    await nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
+    await nftContract.connect(holder).mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost});
 
     let token = await nftContract.lastTokenId();
 
@@ -934,7 +934,7 @@ describe('Withdrawals tests', async function () {
     let mintQty = toBN(10); //Math.floor(Math.random() * 10) + 1;
     let mintCost = mintQty.mul(itemPrice);
 
-    await nftContract.connect(holder).mint(await holder.getAddress(), nonce, mintQty, allowance, {value: mintCost});
+    await nftContract.connect(holder).mint(mintQty, await holder.getAddress(), nonce, allowance, {value: mintCost});
         
     let balBefore = toBN(await deployer.getBalance());
     

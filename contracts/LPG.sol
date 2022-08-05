@@ -7,17 +7,20 @@ pragma solidity ^0.8.14;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "./SignedAllowance.sol";
+//import "./SignedAllowance.sol";
 import "erc721a/contracts/extensions/ERC721AQueryable.sol";
+import '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
 
 import "hardhat/console.sol";
 
 /// @title Launch Pass Genesis Project.
 /// @author of the contract filio.eth (twitter.com/filmakarov)
+/// @author Allowances by Simon Fremaux (@dievardump)
 
-contract LPG is ERC721AQueryable, Ownable, SignedAllowance {  
+contract LPG is ERC721AQueryable, Ownable {  
 
     using Strings for uint256;
+    using ECDSA for bytes32;
 
     /*///////////////////////////////////////////////////////////////
                                 GENERAL STORAGE
@@ -28,6 +31,16 @@ contract LPG is ERC721AQueryable, Ownable, SignedAllowance {
     bool public saleState;
     string public provenanceHash;
     address private reserveMinter;
+
+    /*///////////////////////////////////////////////////////////////
+                                ALLOWANCES STORAGE
+    //////////////////////////////////////////////////////////////*/
+
+    // list of already used allowances
+    mapping(bytes32 => bool) public usedAllowances;
+
+    // address used to sign the allowances
+    address private _allowancesSigner;
 
     /*///////////////////////////////////////////////////////////////
                                 INITIALIZATION
@@ -45,7 +58,7 @@ contract LPG is ERC721AQueryable, Ownable, SignedAllowance {
                         MINTING LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function mint(address to, uint256 nonce, uint256 mintQty, bytes memory signature) public payable {
+    function mint(uint256 mintQty, address to, uint256 nonce, bytes memory signature) public payable {
         require (saleState, "Sale is not active");
 
         uint256 price = uint256(uint128(nonce));
@@ -165,6 +178,107 @@ contract LPG is ERC721AQueryable, Ownable, SignedAllowance {
          address payable beneficiary = payable(owner());
         (bool success, ) = beneficiary.call{value: amt}("");
         if (!success) revert ("Withdrawal failed");
+    }    
+
+    /// @notice Helper to know allowancesSigner address
+    /// @return the allowance signer address
+    function allowancesSigner() public view virtual returns (address) {
+        return _allowancesSigner;
+    }
+
+    /// @notice Helper that creates the message that signer needs to sign to allow a mint
+    ///         this is usually also used when creating the allowances, to ensure "message"
+    ///         is the same
+    /// @param account the account to allow
+    /// @param nonce the nonce
+    /// @return the message to sign
+    function createMessage(address account, uint256 nonce)
+        public
+        view
+        returns (bytes32)
+    {
+        return keccak256(abi.encode(account, nonce, address(this)));
+    }
+
+    /// @notice Helper that creates a list of messages that signer needs to sign to allow mintings
+    /// @param accounts the accounts to allow
+    /// @param nonces the corresponding nonces
+    /// @return messages the messages to sign
+  /*  
+    // function is commented out to save space in the contract
+    // to batch create message will need to use for loop with the createMessage function
+
+    function createMessages(address[] memory accounts, uint256[] memory nonces)
+        external
+        view
+        returns (bytes32[] memory messages)
+    {
+        require(accounts.length == nonces.length, '!LENGTH_MISMATCH!');
+        messages = new bytes32[](accounts.length);
+        for (uint256 i; i < accounts.length; i++) {
+            messages[i] = createMessage(accounts[i], nonces[i]);
+        }
+    } */
+
+    /// @notice This function verifies that the current request is valid
+    /// @dev It ensures that _allowancesSigner signed a message containing (account, nonce, address(this))
+    ///      and that this message was not already used
+    /// @param account the account the allowance is associated to
+    /// @param nonce the nonce associated to this allowance
+    /// @param signature the signature by the allowance signer wallet
+    /// @return the message to mark as used
+    function validateSignature(
+        address account,
+        uint256 nonce,
+        bytes memory signature
+    ) public view returns (bytes32) {
+        return
+            _validateSignature(account, nonce, signature, allowancesSigner());
+    }
+
+    /// @dev It ensures that signer signed a message containing (account, nonce, address(this))
+    ///      and that this message was not already used
+    /// @param account the account the allowance is associated to
+    /// @param nonce the nonce associated to this allowance
+    /// @param signature the signature by the allowance signer wallet
+    /// @param signer the signer
+    /// @return the message to mark as used
+    function _validateSignature(
+        address account,
+        uint256 nonce,
+        bytes memory signature,
+        address signer
+    ) internal view returns (bytes32) {
+        bytes32 message = createMessage(account, nonce)
+            .toEthSignedMessageHash();
+
+        // verifies that the sha3(account, nonce, address(this)) has been signed by signer
+        require(message.recover(signature) == signer, '!INVALID_SIGNATURE!');
+
+        // verifies that the allowances was not already used
+        require(usedAllowances[message] == false, '!ALREADY_USED!');
+
+        return message;
+    }
+
+    /// @notice internal function that verifies an allowance and marks it as used
+    ///         this function throws if signature is wrong or this nonce for this user has already been used
+    /// @param account the account the allowance is associated to
+    /// @param nonce the nonce
+    /// @param signature the signature by the allowance wallet
+    function _useAllowance(
+        address account,
+        uint256 nonce,
+        bytes memory signature
+    ) internal {
+        bytes32 message = validateSignature(account, nonce, signature);
+        usedAllowances[message] = true;
+    }
+
+    /// @notice Allows to change the allowance signer. This can be used to revoke any signed allowance not already used
+    /// @param newSigner the new signer address
+    function _setAllowancesSigner(address newSigner) internal {
+        _allowancesSigner = newSigner;
     }
 }
 
